@@ -1,23 +1,16 @@
-FROM ubuntu:22.04 AS builder
+FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y gcc libc6-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-WORKDIR /build
+WORKDIR /app
+
 COPY oracle.c .
 
 RUN gcc -o oracle oracle.c
 
-FROM python:3.11-slim
-
-WORKDIR /app
-
-COPY --from=builder /build/oracle ./files/oracle
-
-RUN echo '{"service": "obfuscated-oracle", "status": "binary_ready"}' > health.json
-
-RUN apt-get update && apt-get install -y python3 python3-pip && rm -rf /var/lib/apt/lists/*
-
-RUN pip3 install --no-cache-dir flask gunicorn
+RUN pip install --no-cache-dir flask gunicorn
 
 COPY <<'EOF' app.py
 from flask import Flask, send_file, jsonify
@@ -44,7 +37,7 @@ def index():
 
 @app.route('/download/oracle')
 def download():
-    return send_file('files/oracle', as_attachment=True, download_name='oracle')
+    return send_file('/app/oracle', as_attachment=True, download_name='oracle')
 
 @app.route('/health')
 def health():
@@ -57,4 +50,4 @@ EOF
 ENV PORT=5000
 EXPOSE $PORT
 
-CMD gunicorn app:app --bind 0.0.0.0:$PORT --workers 1
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:$PORT", "--workers", "1"]
