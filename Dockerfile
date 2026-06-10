@@ -1,53 +1,45 @@
-FROM python:3.11-slim
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -y gcc libc6-dev && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y \
+    ttyd \
+    gcc \
+    libc6-dev \
+    binutils \
+    coreutils \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+RUN useradd -m -s /bin/bash ctfuser && \
+    echo "ctfuser:ctfuser" | chpasswd
+
+WORKDIR /home/ctfuser
 
 COPY oracle.c .
 
-RUN gcc -o oracle oracle.c
+RUN gcc -o oracle oracle.c && \
+    chmod +x oracle && \
+    chown ctfuser:ctfuser oracle && \
+    rm oracle.c
 
-RUN pip install --no-cache-dir flask gunicorn
+RUN echo '#!/bin/bash' > /home/ctfuser/hint.txt && \
+    echo 'Welcome to the Obfuscated Oracle challenge!' >> /home/ctfuser/hint.txt && \
+    echo '' >> /home/ctfuser/hint.txt && \
+    echo 'The oracle binary contains a hidden flag.' >> /home/ctfuser/hint.txt && \
+    echo '' >> /home/ctfuser/hint.txt && \
+    echo 'Try these commands:' >> /home/ctfuser/hint.txt && \
+    echo '  ./oracle              - Run the binary' >> /home/ctfuser/hint.txt && \
+    echo '  strings oracle        - Extract readable strings' >> /home/ctfuser/hint.txt && \
+    echo '  strings oracle | grep -E "^[A-Za-z0-9+/=]{20,}$"  - Find Base64' >> /home/ctfuser/hint.txt && \
+    echo '  echo "<base64>" | base64 -d  - Decode Base64' >> /home/ctfuser/hint.txt && \
+    chmod 444 /home/ctfuser/hint.txt && \
+    chown ctfuser:ctfuser /home/ctfuser/hint.txt
 
-COPY <<'EOF' app.py
-from flask import Flask, send_file, jsonify
-import os
+RUN echo '#!/bin/bash' > /entrypoint.sh && \
+    echo 'exec ttyd -p 10000 -W login -f ctfuser' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
-app = Flask(__name__)
+EXPOSE 10000
 
-@app.route('/')
-def index():
-    return jsonify({
-        "challenge": "Obfuscated Oracle",
-        "category": "Reverse Engineering",
-        "difficulty": "Easy",
-        "points": 150,
-        "download": "/download/oracle",
-        "instructions": [
-            "Download the oracle binary",
-            "Make it executable: chmod +x oracle",
-            "Run it: ./oracle",
-            "Use 'strings oracle' to find the encoded flag",
-            "Decode the Base64 string to get the flag"
-        ]
-    })
-
-@app.route('/download/oracle')
-def download():
-    return send_file('/app/oracle', as_attachment=True, download_name='oracle')
-
-@app.route('/health')
-def health():
-    return jsonify({"status": "ok"})
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-EOF
-
-ENV PORT=5000
-EXPOSE $PORT
-
-CMD gunicorn app:app --bind 0.0.0.0:$PORT --workers 1
+CMD ["/entrypoint.sh"]
