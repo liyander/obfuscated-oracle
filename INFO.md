@@ -36,8 +36,8 @@ Extract a Base64-encoded string from the binary using `strings`, then decode it 
 
 1. Run `./oracle` to see what it says.
 2. Use `strings oracle` to extract all text from the binary.
-3. Look for a long string that looks like Base64 (letters, numbers, +, /, =).
-4. Decode it with `base64 -d`.
+3. Look for a string containing `FLAG_ENCODED_BASE64_`.
+4. Extract the Base64 part and decode it with `base64 -d`.
 
 ## Tools Included in Terminal
 

@@ -37,18 +37,20 @@ cat hint.txt
 
 It prints a message about the flag being hidden.
 
-### Step 4: Extract Strings
+### Step 4: Extract the Flag String
 
 ```bash
-strings oracle | grep -E '^[A-Za-z0-9+/=]{20,}$'
+strings oracle | grep FLAG_ENCODED
 ```
 
 Output:
 ```
-YmxhY2twZXJse3N0cjFuZ3NfYjY0X2QzYzBkM2R9
+FLAG_ENCODED_BASE64_YmxhY2twZXJse3N0cjFuZ3NfYjY0X2QzYzBkM2R9_END_FLAG
 ```
 
-### Step 5: Decode Base64
+### Step 5: Extract and Decode Base64
+
+Extract the Base64 part (between `BASE64_` and `_END_FLAG`):
 
 ```bash
 echo "YmxhY2twZXJse3N0cjFuZ3NfYjY0X2QzYzBkM2R9" | base64 -d
@@ -57,6 +59,12 @@ echo "YmxhY2twZXJse3N0cjFuZ3NfYjY0X2QzYzBkM2R9" | base64 -d
 Output:
 ```
 blackperl{str1ngs_b64_d3c0d3d}
+```
+
+### One-liner
+
+```bash
+strings oracle | grep FLAG_ENCODED | sed 's/.*BASE64_\(.*\)_END_FLAG.*/\1/' | base64 -d
 ```
 
 ## Running Locally
